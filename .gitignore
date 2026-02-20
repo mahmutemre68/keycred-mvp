@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+*.db
+
+# Uploads
+backend/uploads/*.pdf
+
+# Node
+node_modules/
+dist/
+
+# Environment
+.env
+.DS_Store
