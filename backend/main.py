@@ -65,7 +65,13 @@ async def upload_receipt(
         shutil.copyfileobj(file.file, f)
 
     # Run scorer
-    result = scorer.score(file_path)
+    try:
+        result = scorer.score(file_path)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Scoring failed: {str(exc)}",
+        )
 
     # Persist receipt & score
     receipt = BankReceipt(tenant_id=tenant_id, file_path=file_path)
@@ -87,6 +93,10 @@ async def upload_receipt(
         "receipt_id": receipt.id,
         "keycred_score": result["keycred_score"],
         "max_rent_limit": result["max_rent_limit"],
+        "is_approved": result["is_approved"],
+        "risk_level": result["risk_level"],
         "pages_parsed": result["pages_parsed"],
         "status": result["status"],
+        "score_breakdown": result["score_breakdown"],
+        "mocked_parameters": result["mocked_parameters"],
     }
