@@ -1,12 +1,14 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import engine, Base, get_db
 from models import Tenant, BankReceipt, Score
 from services import RuleBasedScorer
+from certificate import generate_certificate
 
 # ---------------------------------------------------------------------------
 # App & CORS
@@ -100,3 +102,49 @@ async def upload_receipt(
         "score_breakdown": result["score_breakdown"],
         "mocked_parameters": result["mocked_parameters"],
     }
+
+
+@app.post("/api/certificate/{tenant_id}")
+async def generate_cert(
+    tenant_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Score a receipt and generate a PDF certificate (only if approved)."""
+    # Validate tenant
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    # Save uploaded file
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Run scorer
+    try:
+        result = scorer.score(file_path)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Scoring failed: {str(exc)}")
+
+    if not result["is_approved"]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Score {result['keycred_score']} is below the 650 approval threshold. Certificate denied.",
+        )
+
+    # Generate certificate PDF
+    pdf_bytes, cert_id = generate_certificate(
+        tenant_name=tenant.name,
+        keycred_score=result["keycred_score"],
+        max_rent_limit=result["max_rent_limit"],
+        risk_level=result["risk_level"],
+        score_breakdown=result["score_breakdown"],
+        mocked_parameters=result["mocked_parameters"],
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="KeyCred_Certificate_{cert_id}.pdf"'},
+    )

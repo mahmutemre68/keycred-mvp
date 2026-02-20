@@ -42,6 +42,7 @@ export default function App() {
     const [uploading, setUploading] = useState(false)
     const [result, setResult] = useState(null)
     const [error, setError] = useState(null)
+    const [certLoading, setCertLoading] = useState(false)
     const inputRef = useRef()
 
     /* ── Drag & Drop handlers ── */
@@ -101,6 +102,37 @@ export default function App() {
         setFile(null)
         setResult(null)
         setError(null)
+    }
+
+    /* ── Certificate download ── */
+    const handleCertificate = async () => {
+        if (!file) return
+        setCertLoading(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            const res = await fetch(`${API_URL}/api/certificate/1`, {
+                method: 'POST',
+                body: formData,
+            })
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.detail || 'Certificate generation failed')
+            }
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'KeyCred_Certificate.pdf'
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            setCertLoading(false)
+        }
     }
 
     const scoreColor = result
@@ -326,6 +358,45 @@ export default function App() {
                                             '⚠️ Needs Improvement'}
                                 </span>
                             </div>
+
+                            {/* Certificate download button */}
+                            {result.is_approved && (
+                                <button
+                                    onClick={handleCertificate}
+                                    disabled={certLoading}
+                                    style={{
+                                        width: '100%', marginTop: 14, padding: '14px',
+                                        borderRadius: 12, border: 'none', cursor: certLoading ? 'wait' : 'pointer',
+                                        background: 'linear-gradient(135deg, #34d399, #059669)',
+                                        color: '#fff', fontSize: 14, fontWeight: 700,
+                                        letterSpacing: '-0.01em',
+                                        boxShadow: '0 4px 20px rgba(52,211,153,0.3)',
+                                        transition: 'all 0.3s',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    }}
+                                >
+                                    {certLoading ? (
+                                        <>
+                                            <span style={{ display: 'inline-block', width: 16, height: 16, borderRadius: '50%', border: '2px solid transparent', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
+                                            Generating…
+                                        </>
+                                    ) : (
+                                        <>
+                                            📜 Download Score Certificate
+                                        </>
+                                    )}
+                                </button>
+                            )}
+
+                            {!result.is_approved && (
+                                <div style={{
+                                    marginTop: 14, padding: '12px 16px', borderRadius: 12, textAlign: 'center',
+                                    background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)',
+                                    fontSize: 12, color: '#f87171',
+                                }}>
+                                    ⚠️ Score must be ≥ 650 for certificate eligibility
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
