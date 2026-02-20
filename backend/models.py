@@ -10,7 +10,7 @@ class Tenant(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
     receipts = relationship("BankReceipt", back_populates="tenant")
     scores = relationship("Score", back_populates="tenant")
@@ -22,7 +22,7 @@ class BankReceipt(Base):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
     file_path = Column(String, nullable=False)
-    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)
+    uploaded_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
     tenant = relationship("Tenant", back_populates="receipts")
     score = relationship("Score", back_populates="receipt", uselist=False)
@@ -36,7 +36,7 @@ class Score(Base):
     receipt_id = Column(Integer, ForeignKey("bank_receipts.id"), nullable=False)
     keycred_score = Column(Float, nullable=False)
     max_rent_limit = Column(Float, nullable=False)
-    scored_at = Column(DateTime, default=datetime.datetime.utcnow)
+    scored_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.UTC))
 
     tenant = relationship("Tenant", back_populates="scores")
     receipt = relationship("BankReceipt", back_populates="score")

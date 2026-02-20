@@ -9,16 +9,14 @@ import hashlib
 import io
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm, cm
+from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 
 
 # ── Constants ─────────────────────────────────────────────────────────
@@ -49,7 +47,7 @@ def _generate_certificate_id() -> str:
 
 def _generate_verification_hash(cert_id: str, score: int, tenant_name: str) -> str:
     """SHA-256 hash for anti-fraud verification."""
-    payload = f"{cert_id}:{score}:{tenant_name}:{datetime.utcnow().strftime('%Y-%m-%d')}"
+    payload = f"{cert_id}:{score}:{tenant_name}:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
     return hashlib.sha256(payload.encode()).hexdigest()[:24]
 
 
@@ -101,7 +99,7 @@ def generate_certificate(
     risk_level: str,
     score_breakdown: dict,
     mocked_parameters: dict,
-) -> bytes:
+) -> tuple[bytes, str]:
     """
     Generate a premium PDF certificate for an approved tenant.
 
@@ -109,7 +107,7 @@ def generate_certificate(
     """
     cert_id = _generate_certificate_id()
     verification_hash = _generate_verification_hash(cert_id, keycred_score, tenant_name)
-    issue_date = datetime.utcnow()
+    issue_date = datetime.now(timezone.utc)
     expiry_date = issue_date + timedelta(days=90)
 
     qr_payload = (
@@ -214,7 +212,6 @@ def generate_certificate(
     badge_x = (PAGE_W - tw) / 2 - 8 * mm
     badge_w = tw + 16 * mm
 
-    c.setFillColor(score_color)
     c.setStrokeColor(score_color)
     c.roundRect(badge_x, y - 2 * mm, badge_w, 8 * mm, 3 * mm, fill=0, stroke=1)
     c.setFillColor(score_color)

@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react'
 const API_URL = 'http://localhost:8000'
 
 /* ───────── Animated Score Ring ───────── */
-function ScoreRing({ score, maxScore = 900 }) {
+function ScoreRing({ score, maxScore = 1000 }) {
     const radius = 80
     const stroke = 10
     const circumference = 2 * Math.PI * radius

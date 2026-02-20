@@ -88,7 +88,6 @@ async def upload_receipt(
     )
     db.add(score)
     db.commit()
-    db.refresh(score)
 
     return {
         "tenant_id": tenant_id,
